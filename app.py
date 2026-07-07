@@ -9,7 +9,7 @@ import streamlit as st
 # -------------------------------------------------
 # Configuration
 # -------------------------------------------------
-MODEL_PATH = "rainfall_randomforest_80_20.pkl"
+MODEL_PATH = "rainfall_randomforest_80_20.jibjob"
 
 # Default location: Dhaka, Bangladesh
 LATITUDE = 23.8103

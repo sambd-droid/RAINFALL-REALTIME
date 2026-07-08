@@ -6,54 +6,134 @@ import pandas as pd
 import requests
 import streamlit as st
 
-# -------------------------------------------------
-# Configuration
-# -------------------------------------------------
 MODEL_PATH = "rainfall_randomforest_80_20.joblib"
 
-# Default location: Dhaka, Bangladesh
 LATITUDE = 23.8103
 LONGITUDE = 90.4125
 TIMEZONE = "Asia/Dhaka"
 
 st.set_page_config(
-    page_title="Rainfall Prediction",
+    page_title="Localized Rainfall Prediction",
     page_icon="🌧️",
-    layout="centered"
+    layout="wide"
 )
 
-# -------------------------------------------------
-# Load saved Random Forest model
-# -------------------------------------------------
+# -----------------------------
+# White card design CSS
+# -----------------------------
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: #eef3f7;
+    }
+
+    .block-container {
+        max-width: 1100px;
+        margin-top: 70px;
+        padding: 55px 50px;
+        background: white;
+        border-radius: 18px;
+        box-shadow: 0px 10px 35px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+        text-align: center;
+        color: #0f4c81;
+        font-size: 46px !important;
+        font-weight: 800 !important;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #5f6f82;
+        font-size: 22px;
+        margin-bottom: 35px;
+    }
+
+    .location-text {
+        text-align: center;
+        color: #5f6f82;
+        font-size: 18px;
+        margin-top: 25px;
+        margin-bottom: 25px;
+    }
+
+    div.stButton > button {
+        background-color: #0f7f73;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 28px;
+        font-size: 20px;
+        font-weight: 600;
+        height: 55px;
+    }
+
+    div.stButton > button:hover {
+        background-color: #0b665d;
+        color: white;
+    }
+
+    div[data-testid="stDateInput"] input {
+        font-size: 20px;
+        height: 52px;
+        border-radius: 8px;
+    }
+
+    .success-box {
+        background: #ecfdf5;
+        border: 1px solid #10b981;
+        color: #065f46;
+        padding: 22px;
+        border-radius: 12px;
+        text-align: center;
+        margin-top: 25px;
+        font-size: 22px;
+        font-weight: 700;
+    }
+
+    .error-box {
+        background: #fff1f2;
+        border: 1px solid #ff4d4d;
+        color: #a00000;
+        padding: 18px 22px;
+        border-radius: 12px;
+        margin-top: 25px;
+        font-size: 20px;
+    }
+
+    .footer {
+        text-align: center;
+        color: #5f6f82;
+        font-size: 18px;
+        margin-top: 35px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# -----------------------------
+# Load model
+# -----------------------------
 @st.cache_resource
 def load_model():
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Model file '{MODEL_PATH}' was not found. "
-            "Upload it to the same Streamlit project folder."
-        )
-
     saved = joblib.load(MODEL_PATH)
-
-    return (
-        saved["model"],
-        saved["feature_names"],
-        saved["label_encoder"]
-    )
+    return saved["model"], saved["feature_names"], saved["label_encoder"]
 
 model, feature_names, le = load_model()
 
 
 def get_class_name(class_id):
-    """Convert an encoded predicted class to its original rainfall class name."""
     return str(le.inverse_transform([int(class_id)])[0])
 
 
+# -----------------------------
+# Weather API with cache
+# -----------------------------
+@st.cache_data(ttl=3600)
 def fetch_weather_features(selected_date):
-    """
-    Download weather data for one date from Open-Meteo,
-    then calculate the 8 feature values required by the model.
-    """
     date_text = selected_date.strftime("%Y-%m-%d")
 
     url = (
@@ -69,6 +149,12 @@ def fetch_weather_features(selected_date):
     )
 
     response = requests.get(url, timeout=30)
+
+    if response.status_code == 429:
+        raise ValueError(
+            "Weather API limit reached. Please wait a few minutes and try again."
+        )
+
     response.raise_for_status()
     data = response.json()
 
@@ -78,7 +164,6 @@ def fetch_weather_features(selected_date):
     if hourly_df.empty or daily_df.empty:
         raise ValueError("Weather data is not available for this date.")
 
-    # These names must match the 8 features used in model training.
     weather_features = {
         "temp high": float(daily_df["temperature_2m_max"].iloc[0]),
         "DP high": float(hourly_df["dew_point_2m"].max()),
@@ -93,69 +178,114 @@ def fetch_weather_features(selected_date):
     return weather_features
 
 
-# -------------------------------------------------
-# App interface
-# -------------------------------------------------
-st.title("🌧️ Localized Rainfall Prediction")
-st.write(
-    "Choose a date. The app collects weather values automatically "
-    "and predicts the rainfall class."
+# -----------------------------
+# App UI
+# -----------------------------
+st.markdown(
+    """
+    <h1>🌧️ Localized Rainfall Prediction</h1>
+    <p class="subtitle">
+    Select a date. The system collects weather data automatically and predicts the rainfall class.
+    </p>
+    """,
+    unsafe_allow_html=True
 )
 
-st.caption("Location: Dhaka, Bangladesh")
+today = date.today()
+min_date = today
+max_date = today + timedelta(days=16)
 
-# Open-Meteo forecast availability is limited.
-min_date = date.today()
-max_date = date.today() + timedelta(days=16)
+col1, col2, col3 = st.columns([1.4, 1.1, 1.4])
 
-selected_date = st.date_input(
-    "Choose Prediction Date",
-    value=date.today(),
-    min_value=min_date,
-    max_value=max_date
+with col1:
+    st.write("")
+
+with col2:
+    selected_date = st.date_input(
+        "",
+        value=today,
+        min_value=min_date,
+        max_value=max_date
+    )
+
+with col3:
+    st.write("")
+
+btn_col1, btn_col2, btn_col3 = st.columns([1.45, 1, 1.45])
+
+with btn_col2:
+    predict_button = st.button("Get Prediction", use_container_width=True)
+
+st.markdown(
+    f"""
+    <p class="location-text">
+    Location: Dhaka, Bangladesh | Forecast range: {min_date} to {max_date}
+    </p>
+    """,
+    unsafe_allow_html=True
 )
 
-if st.button("Get Rainfall Prediction", type="primary"):
+if predict_button:
     try:
         with st.spinner("Collecting weather data and predicting rainfall..."):
             weather_values = fetch_weather_features(selected_date)
 
-            # Use the original feature order saved with the model.
-            input_df = pd.DataFrame([weather_values])[feature_names]
+            input_df = pd.DataFrame([weather_values])
+            input_df = input_df[feature_names]
 
             predicted_id = model.predict(input_df)[0]
             predicted_class = get_class_name(predicted_id)
 
-        st.success(f"Predicted Rainfall Class: {predicted_class}")
+            confidence = None
+            if hasattr(model, "predict_proba"):
+                probs = model.predict_proba(input_df)[0]
+                confidence = probs.max() * 100
 
-        if hasattr(model, "predict_proba"):
-            probabilities = model.predict_proba(input_df)[0]
-            confidence = probabilities.max() * 100
+        if confidence is not None:
+            st.markdown(
+                f"""
+                <div class="success-box">
+                Predicted Rainfall Class: {predicted_class}<br>
+                Confidence: {confidence:.2f}%
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"""
+                <div class="success-box">
+                Predicted Rainfall Class: {predicted_class}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-            st.info(f"Confidence: {confidence:.2f}%")
-
-            probability_df = pd.DataFrame({
-                "Rainfall Class": [get_class_name(class_id) for class_id in model.classes_],
-                "Probability (%)": probabilities * 100
-            })
-
-            st.subheader("Class Probabilities")
-            st.dataframe(probability_df, use_container_width=True)
-            st.bar_chart(probability_df.set_index("Rainfall Class"))
-
-        st.subheader("Weather Values Used")
-        used_values = pd.DataFrame.from_dict(
-            weather_values,
-            orient="index",
-            columns=["Value"]
-        )
-        st.dataframe(used_values, use_container_width=True)
+        with st.expander("Weather values used"):
+            st.dataframe(
+                pd.DataFrame.from_dict(
+                    weather_values,
+                    orient="index",
+                    columns=["Value"]
+                ),
+                use_container_width=True
+            )
 
     except Exception as error:
-        st.error(f"Prediction failed: {error}")
-        st.warning(
-            "Please choose a date within the available forecast range. "
-            "For past dates, use a historical weather API."
+        st.markdown(
+            f"""
+            <div class="error-box">
+            <strong>Prediction failed:</strong> {error}
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
-st.caption("Model: Random Forest | Weather source: Open-Meteo")
+st.markdown(
+    """
+    <p class="footer">
+    Model: Random Forest | Weather API: Open-Meteo | Framework: Streamlit
+    </p>
+    """,
+    unsafe_allow_html=True
+)

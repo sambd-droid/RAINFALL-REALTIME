@@ -39,7 +39,7 @@ st.markdown(
 
     h1 {
         text-align: center;
-        color: #092ed6;
+        color: #5f6f82;
         font-size: 46px !important;
         font-weight: 800 !important;
     }

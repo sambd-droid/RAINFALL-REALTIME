@@ -37,23 +37,24 @@ st.markdown(
         box-shadow: 0px 10px 35px rgba(0,0,0,0.08);
     }
 
-    h1 {
+    .main-title {
         text-align: center;
-        color: #5f6f82;
-        font-size: 46px !important;
-        font-weight: 800 !important;
+        color: #0f4c81 !important;
+        font-size: 46px;
+        font-weight: 800;
+        margin-bottom: 18px;
     }
 
     .subtitle {
         text-align: center;
-        color: #5f6f82;
+        color: #5f6f82 !important;
         font-size: 22px;
         margin-bottom: 35px;
     }
 
     .location-text {
         text-align: center;
-        color: #5f6f82;
+        color: #5f6f82 !important;
         font-size: 18px;
         margin-top: 25px;
         margin-bottom: 25px;
@@ -75,16 +76,10 @@ st.markdown(
         color: white;
     }
 
-    div[data-testid="stDateInput"] input {
-        font-size: 20px;
-        height: 52px;
-        border-radius: 8px;
-    }
-
     .success-box {
         background: #ecfdf5;
         border: 1px solid #10b981;
-        color: #065f46;
+        color: #065f46 !important;
         padding: 22px;
         border-radius: 12px;
         text-align: center;
@@ -96,7 +91,7 @@ st.markdown(
     .error-box {
         background: #fff1f2;
         border: 1px solid #ff4d4d;
-        color: #a00000;
+        color: #a00000 !important;
         padding: 18px 22px;
         border-radius: 12px;
         margin-top: 25px;
@@ -105,7 +100,7 @@ st.markdown(
 
     .footer {
         text-align: center;
-        color: #5f6f82;
+        color: #5f6f82 !important;
         font-size: 18px;
         margin-top: 35px;
     }
@@ -113,7 +108,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
 # -----------------------------
 # Load model
 # -----------------------------
@@ -183,10 +177,10 @@ def fetch_weather_features(selected_date):
 # -----------------------------
 st.markdown(
     """
-    <h1>🌧️ Localized Rainfall Prediction</h1>
-    <p class="subtitle">
-    Select a date. The system collects weather data automatically and predicts the rainfall class.
-    </p>
+    <div class="main-title">🌧️ Localized Rainfall Prediction</div>
+    <div class="subtitle">
+        Select a date. The system collects weather data automatically and predicts the rainfall class.
+    </div>
     """,
     unsafe_allow_html=True
 )
